@@ -1,0 +1,2631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAM 2.2 — Plant Automation Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface2:   #1c2230;
+  --border:     rgba(255,255,255,0.07);
+  --text:       #e8edf3;
+  --muted:      #6b7a8d;
+  --dim:        #3d4f63;
+
+  --green:      #3fb950;
+  --green-glow: rgba(63,185,80,0.15);
+  --green-dim:  rgba(63,185,80,0.08);
+
+  --tomato:     #f78166;
+  --tomato-dim: rgba(247,129,102,0.1);
+  --tomato-glow:rgba(247,129,102,0.2);
+
+  --pepper:     #ffa657;
+  --pepper-dim: rgba(255,166,87,0.1);
+  --pepper-glow:rgba(255,166,87,0.2);
+
+  --straw:      #ff7b7b;
+  --straw-dim:  rgba(255,123,123,0.1);
+  --straw-glow: rgba(255,123,123,0.2);
+
+  --water:      #58a6ff;
+  --water-dim:  rgba(88,166,255,0.1);
+
+  --sun:        #e3b341;
+  --sun-dim:    rgba(227,179,65,0.1);
+
+  --purple:     #bc8cff;
+  --purple-dim: rgba(188,140,255,0.1);
+
+  --warn:       #d29922;
+  --danger:     #f85149;
+  --danger-dim: rgba(248,81,73,0.1);
+
+  --radius:     14px;
+  --radius-sm:  8px;
+  --shadow:     0 4px 20px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle grid background */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+#app {
+  position:relative; z-index:1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── HEADER ─── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px;
+  gap: 12px;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: var(--green-dim);
+  border: 1px solid rgba(63,185,80,0.25);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.logo-text h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.3px;
+}
+.logo-text p {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 2px;
+}
+
+.header-right {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.conn-badge {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+}
+.conn-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--dim);
+  transition: all 0.4s;
+}
+.conn-dot.ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.conn-dot.err { background: var(--danger); }
+
+.clock-badge {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+}
+
+/* ─── WEATHER STRIP ─── */
+#weather-strip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wx-current {
+  display: flex; align-items: center; gap: 12px;
+}
+.wx-icon { font-size: 28px; line-height: 1; }
+.wx-vals { display: flex; gap: 10px; align-items: flex-end; }
+.wx-temp {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text);
+}
+.wx-meta { display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; }
+.wx-meta span {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+}
+.wx-meta span b { color: var(--text); font-weight: 500; }
+
+.wx-pills {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.wx-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.wx-pill b { color: var(--text); font-weight: 500; }
+.wx-pill.hot b { color: var(--danger); }
+.wx-pill.uv-high b { color: var(--sun); }
+
+.wx-forecast {
+  display: flex; gap: 6px;
+}
+.fc-day {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 52px;
+}
+.fc-day .fc-label { font-size: 8px; text-transform: uppercase; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.5px; }
+.fc-day .fc-icon  { font-size: 16px; line-height: 1.4; }
+.fc-day .fc-hi   { font-size: 11px; font-weight: 600; }
+.fc-day .fc-lo   { font-size: 9px; color: var(--muted); }
+
+.wx-load-btn {
+  background: var(--green-dim);
+  border: 1px solid rgba(63,185,80,0.3);
+  color: var(--green);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.wx-load-btn:hover { background: rgba(63,185,80,0.2); }
+.wx-load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── IRRIGATION STATUS ─── */
+#irr-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.irr-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.irr-label { font-size: 8px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+.irr-val {
+  font-size: 14px; font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  color: var(--dim);
+}
+.irr-val.on   { color: var(--water); }
+.irr-val.ok   { color: var(--green); }
+.irr-val.warn { color: var(--warn); }
+.irr-val.bad  { color: var(--danger); }
+
+/* ─── SHADE SCHEDULE CARD ─── */
+#shade-schedule {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shade-sched-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.shade-sched-header h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px; color: var(--sun);
+  display: flex; align-items: center; gap: 8px;
+}
+.shade-sched-header p { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+#shade-schedule-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.shade-group-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.shade-group-title {
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  font-family: 'DM Mono', monospace;
+  display: flex; align-items: center; gap: 6px;
+}
+.shade-group-title .sdot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dim); transition: all 0.3s;
+}
+.shade-group-title .sdot.active { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.shade-time-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.shade-time-pill {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 10px; font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  display: flex; align-items: center; gap: 5px;
+}
+.shade-time-pill.down { color: var(--warn); border-color: rgba(210,153,34,0.3); background: rgba(210,153,34,0.08); }
+.shade-time-pill.up   { color: var(--green); border-color: rgba(63,185,80,0.3); background: var(--green-dim); }
+.shade-reason-txt {
+  font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace;
+  line-height: 1.5;
+}
+.shade-loading-txt {
+  font-size: 10px; color: var(--dim); font-family: 'DM Mono', monospace;
+  font-style: italic; padding: 8px 0; grid-column: span 2; text-align: center;
+}
+
+/* ─── BEDS GRID ─── */
+#beds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.bed-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.3s;
+}
+.bed-card.bed-tomato  { border-top: 2px solid var(--tomato); }
+.bed-card.bed-pepper  { border-top: 2px solid var(--pepper); }
+.bed-card.bed-straw   { border-top: 2px solid var(--straw); }
+
+.bed-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+}
+.bed-title h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  line-height: 1.1;
+}
+.bed-title h3.tomato-c { color: var(--tomato); }
+.bed-title h3.pepper-c { color: var(--pepper); }
+.bed-title h3.straw-c  { color: var(--straw); }
+.bed-title p {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.analyze-btn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.analyze-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Sensor grid */
+.sensor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.sbox {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sbox-label {
+  font-size: 8px;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 3px;
+}
+.sbox-val {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.1;
+}
+.sbox-val .u { font-size: 9px; font-weight: 500; color: var(--muted); }
+
+.sbox.span2 { grid-column: span 2; }
+
+/* Health strip */
+.health-strip {
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid transparent;
+  display: none;
+}
+.health-strip.good { background: var(--green-dim); border-color: rgba(63,185,80,0.2); color: var(--green); display: flex; }
+.health-strip.warn { background: var(--pepper-dim); border-color: rgba(255,166,87,0.2); color: var(--pepper); display: flex; }
+.health-strip.bad  { background: var(--danger-dim); border-color: rgba(248,81,73,0.2);  color: var(--danger); display: flex; }
+
+/* Advice card */
+.advice-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
+  gap: 7px;
+  align-items: flex-start;
+}
+.advice-card:hover { border-color: rgba(255,255,255,0.15); }
+.advice-card.visible { display: flex; }
+.adv-icon { font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+.adv-text { font-size: 10px; font-weight: 600; line-height: 1.3; flex: 1; }
+.adv-time { font-size: 8px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+.advice-card.good .adv-text { color: var(--green); }
+.advice-card.warn .adv-text { color: var(--warn); }
+.advice-card.urgent .adv-text { color: var(--danger); }
+.advice-card.loading .adv-text { color: var(--muted); }
+
+/* Watered footer */
+.bed-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.watered-status {
+  font-size: 9px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.watered-status.active { color: var(--water); }
+.watered-status .wd { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+.sensor-age { font-size: 8px; color: var(--dim); font-family: 'DM Mono', monospace; }
+
+/* Watered button */
+.watered-btn {
+  background: var(--water-dim);
+  border: 1px solid rgba(88,166,255,0.2);
+  color: var(--water);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+.watered-btn:hover { background: rgba(88,166,255,0.15); }
+.watered-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.watered-btn.done { background: var(--green-dim); border-color: rgba(63,185,80,0.3); color: var(--green); }
+
+/* ─── MODAL ─── */
+#modal {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+  padding: 20px;
+}
+#modal.open { opacity: 1; pointer-events: all; }
+#modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%; max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transform: translateY(16px);
+  transition: transform 0.25s;
+}
+#modal.open #modal-box { transform: translateY(0); }
+.modal-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+#modal-title { font-family: 'DM Serif Display', serif; font-size: 18px; }
+.modal-close {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); width: 28px; height: 28px;
+  border-radius: 50%; font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.modal-close:hover { color: var(--text); }
+#modal-body {
+  font-size: 12px; line-height: 1.7;
+  color: var(--text);
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* ─── YAML SETUP PANEL ─── */
+#yaml-panel {
+  background: var(--surface);
+  border: 1px solid rgba(227,179,65,0.2);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.yaml-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.yaml-header h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px;
+  color: var(--sun);
+  display: flex; align-items: center; gap: 8px;
+}
+.yaml-header p {
+  font-size: 10px; color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 3px;
+}
+.yaml-copy-btn {
+  background: var(--sun-dim);
+  border: 1px solid rgba(227,179,65,0.25);
+  color: var(--sun);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.yaml-copy-btn:hover { background: rgba(227,179,65,0.15); }
+.yaml-copy-btn.done { color: var(--green); border-color: rgba(63,185,80,0.3); background: var(--green-dim); }
+
+.yaml-code {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #a5d6ff;
+  white-space: pre;
+  overflow-x: auto;
+}
+.yaml-code .y-key   { color: #79c0ff; }
+.yaml-code .y-val   { color: #a5d6ff; }
+.yaml-code .y-str   { color: #a8d8a8; }
+.yaml-code .y-cmt   { color: var(--muted); }
+
+.yaml-note {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  line-height: 1.6;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(227,179,65,0.3);
+}
+
+/* ─── HARVEST COUNTDOWN ROW ─── */
+#harvest-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.harvest-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 12px;
+}
+.harvest-icon { font-size: 22px; flex-shrink: 0; }
+.harvest-info { flex: 1; min-width: 0; }
+.harvest-info h4 { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'DM Mono', monospace; }
+.harvest-info .hdays {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px; line-height: 1.1;
+}
+.harvest-info .hdays.ready { color: var(--green); }
+.harvest-info .hdays.soon  { color: var(--sun); }
+.harvest-info .hdays.wait  { color: var(--text); }
+.harvest-info .hsub { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.harvest-bar-wrap { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+.harvest-bar { height: 3px; border-radius: 2px; background: var(--green); transition: width 0.5s; }
+
+/* ─── HISTORY CHARTS ─── */
+#history-section {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.history-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.history-header h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.history-header p { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.history-load-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; font-weight: 600;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.history-load-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.history-load-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#history-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.hist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hist-card-title {
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hist-card-title span { font-size: 8px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.chart-wrap {
+  position: relative; width: 100%; height: 80px;
+}
+.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.chart-legend {
+  display: flex; gap: 10px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 8px; font-family: 'DM Mono', monospace; color: var(--muted);
+}
+.legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.hist-empty {
+  font-size: 9px; color: var(--dim); font-family: 'DM Mono', monospace;
+  text-align: center; padding: 20px 0;
+}
+
+/* ─── GENERAL AI SUMMARY ─── */
+#ai-summary-panel {
+  background: var(--surface);
+  border: 1px solid rgba(188,140,255,0.2);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ai-sum-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.ai-sum-header h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px; color: var(--purple);
+  display: flex; align-items: center; gap: 8px;
+}
+.ai-sum-header p { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+.ai-sum-actions {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+
+.ai-sum-refresh {
+  background: var(--purple-dim);
+  border: 1px solid rgba(188,140,255,0.25);
+  color: var(--purple);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; font-weight: 600;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.ai-sum-refresh:hover { background: rgba(188,140,255,0.15); }
+.ai-sum-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── SPEAK BUTTON ─── */
+.speak-btn {
+  background: var(--water-dim);
+  border: 1px solid rgba(88,166,255,0.25);
+  color: var(--water);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px; font-weight: 600;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+}
+.speak-btn:hover { background: rgba(88,166,255,0.15); }
+.speak-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.speak-btn.speaking {
+  background: rgba(88,166,255,0.2);
+  border-color: rgba(88,166,255,0.5);
+  animation: pulse-speak 1.2s ease-in-out infinite;
+}
+.speak-btn.sent {
+  background: var(--green-dim);
+  border-color: rgba(63,185,80,0.3);
+  color: var(--green);
+}
+@keyframes pulse-speak {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(88,166,255,0.3); }
+  50%       { box-shadow: 0 0 0 6px rgba(88,166,255,0); }
+}
+
+#ai-summary-body {
+  font-size: 12px; line-height: 1.8; color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  min-height: 48px;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: visible;
+}
+#ai-summary-body.loading { color: var(--muted); font-style: italic; }
+.ai-sum-meta {
+  font-size: 8px; color: var(--dim); font-family: 'DM Mono', monospace;
+  border-top: 1px solid var(--border); padding-top: 6px;
+}
+
+/* ─── STALE / CACHE BADGES ─── */
+.stale-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(210,153,34,0.12);
+  border: 1px solid rgba(210,153,34,0.3);
+  color: var(--warn);
+  font-size: 8px; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 20px;
+  white-space: nowrap;
+}
+.fresh-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--green-dim);
+  border: 1px solid rgba(63,185,80,0.2);
+  color: var(--green);
+  font-size: 8px; font-family: 'DM Mono', monospace;
+  padding: 2px 7px; border-radius: 20px;
+  white-space: nowrap;
+}
+.cache-row {
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.last-updated-txt {
+  font-size: 8px; color: var(--dim);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ─── NO-KEY BANNER ─── */
+#no-key-banner {
+  background: rgba(248,81,73,0.08);
+  border: 1px solid rgba(248,81,73,0.3);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--danger);
+  font-family: 'DM Mono', monospace;
+  line-height: 1.7;
+  display: none;
+}
+#no-key-banner b { color: #ff8080; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 4px; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { display: inline-block; animation: spin 1s linear infinite; }
+
+/* Responsive */
+@media (max-width: 750px) {
+  #beds-grid { grid-template-columns: 1fr; }
+  #irr-strip { grid-template-columns: 1fr 1fr; }
+  .wx-forecast { display: none; }
+}
+@media (max-width: 550px) {
+  #shade-row { grid-template-columns: 1fr; }
+}
+
+.transplant-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(63,185,80,0.1);
+  border: 1px solid rgba(63,185,80,0.3);
+  color: var(--green);
+  font-size: 8px; font-family: 'DM Mono', monospace; font-weight: 600;
+  padding: 2px 7px; border-radius: 20px;
+  white-space: nowrap;
+  animation: pulse-transplant 2.5s ease-in-out infinite;
+}
+@keyframes pulse-transplant {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ═══════════════════════════════════════════════
+   COMPACT LAYOUT — PAM runs embedded in HA
+   Optimized for iframe / dashboard card use
+   ═══════════════════════════════════════════════ */
+
+html.embed body {
+  font-size: 13px;
+}
+
+html.embed #app {
+  padding: 8px;
+  gap: 7px;
+}
+
+/* Header — tighter, single row */
+html.embed header {
+  padding: 2px 0;
+}
+html.embed .logo-icon {
+  width: 28px; height: 28px; font-size: 14px; border-radius: 8px;
+}
+html.embed .logo-text h1 { font-size: 16px; }
+html.embed .logo-text p  { font-size: 9px; }
+html.embed .wx-load-btn  { font-size: 10px; padding: 4px 10px; }
+html.embed #btn-key,
+html.embed #btn-ai-toggle { height: 26px; font-size: 10px; }
+
+/* Weather strip — hide forecast days */
+html.embed .wx-forecast { display: none !important; }
+html.embed .wx-temp { font-size: 24px; }
+html.embed #weather-strip { padding: 7px 12px; }
+
+/* Irrigation strip — 2 col on narrow */
+@media (max-width: 900px) {
+  html.embed #irr-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  html.embed #irr-strip .watered-btn {
+    grid-column: span 2;
+  }
+}
+
+/* Beds grid — always 1 col under 700px, 2 col mid, 3 col wide */
+@media (max-width: 680px) {
+  html.embed #beds-grid { grid-template-columns: 1fr; }
+  html.embed #harvest-row { grid-template-columns: 1fr; }
+  html.embed #history-charts { grid-template-columns: 1fr; }
+}
+@media (min-width: 681px) and (max-width: 1000px) {
+  html.embed #beds-grid { grid-template-columns: 1fr 1fr; }
+  html.embed #harvest-row { grid-template-columns: 1fr 1fr; }
+  html.embed #history-charts { grid-template-columns: 1fr 1fr; }
+}
+
+/* Bed cards — tighter */
+html.embed .bed-card { padding: 9px; gap: 7px; }
+html.embed .bed-title h3 { font-size: 14px; }
+html.embed .sbox-val { font-size: 14px; }
+html.embed .analyze-btn { font-size: 9px; padding: 4px 8px; }
+
+/* Shade schedule — tighter */
+html.embed #shade-schedule { padding: 9px 12px; }
+
+/* Hide YAML setup panel in embed — not useful in dashboard view */
+html.embed #yaml-panel { display: none !important; }
+
+/* History section — visible, scroll to see */
+
+/* AI summary — tighter */
+html.embed #ai-summary-panel { padding: 9px 12px; }
+html.embed #ai-summary-body { font-size: 11px; min-height: 36px; }
+
+/* Harvest — compact */
+html.embed .harvest-card { padding: 7px 10px; }
+html.embed .harvest-info .hdays { font-size: 18px; }
+html.embed .harvest-icon { font-size: 18px; }
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🌿</div>
+      <div class="logo-text">
+        <h1>PAM</h1>
+        <p id="clock">Plant Automation Manager · --</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="conn-badge">
+        <div class="conn-dot" id="conn-dot"></div>
+        <span id="conn-label">connecting</span>
+      </div>
+      <button class="wx-load-btn" id="btn-weather" onclick="loadWeather()">⛅ Load Weather</button>
+      <button id="btn-key" onclick="showKeyModal()" title="API Key settings" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:14px;width:30px;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;">🔑</button>
+      <button id="btn-ai-toggle" onclick="toggleAIMode()" title="Toggle AI / Sensors only" style="background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;font-weight:600;height:30px;padding:0 10px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.2s;flex-shrink:0;white-space:nowrap;">
+        <span id="ai-toggle-icon">🤖</span><span id="ai-toggle-label">AI On</span>
+      </button>
+
+    </div>
+  </header>
+
+  <!-- NO KEY BANNER -->
+  <div id="no-key-banner">
+    ⚠ <b>Anthropic API key missing.</b> AI features will not work.
+    <button onclick="showKeyModal()" style="margin-left:10px; background:rgba(248,81,73,0.2); border:1px solid rgba(248,81,73,0.4); color:#ff8080; font-family:'Outfit',sans-serif; font-size:11px; font-weight:600; padding:3px 12px; border-radius:20px; cursor:pointer;">Enter Key →</button>
+  </div>
+
+  <!-- KEY SETUP MODAL -->
+  <div id="key-modal" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#161b22;border:1px solid rgba(255,255,255,0.1);border-radius:14px;width:100%;max-width:460px;padding:24px;box-shadow:0 4px 30px rgba(0,0,0,0.5);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <div style="width:32px;height:32px;background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">🌿</div>
+        <div>
+          <div style="font-family:'DM Serif Display',serif;font-size:18px;color:#e8edf3;">PAM Setup</div>
+          <div style="font-size:10px;color:#6b7a8d;font-family:'DM Mono',monospace;margin-top:1px;">Anthropic API Key</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7a8d;line-height:1.6;margin:14px 0 10px;">
+        PAM uses Claude AI for bed analysis, shade scheduling, and garden summaries.<br>
+        Your key is saved in this browser only — never sent anywhere except Anthropic.
+      </p>
+      <div style="font-size:10px;color:#6b7a8d;font-family:'DM Mono',monospace;margin-bottom:6px;">
+        Get your key at <b style="color:#58a6ff;">console.anthropic.com</b> → API Keys → Create Key
+      </div>
+      <input
+        id="key-input"
+        type="password"
+        placeholder="sk-ant-..."
+        style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:12px;color:#e8edf3;outline:none;margin-bottom:12px;box-sizing:border-box;"
+        onkeydown="if(event.key==='Enter') saveKey()"
+      />
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveKey()" style="flex:1;background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:#3fb950;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;padding:9px;border-radius:8px;cursor:pointer;">
+          ✓ Save &amp; Continue
+        </button>
+        <button onclick="closeKeyModal()" style="background:#1c2230;border:1px solid rgba(255,255,255,0.07);color:#6b7a8d;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer;">
+          Skip
+        </button>
+      </div>
+      <div id="key-error" style="font-size:10px;color:#f85149;font-family:'DM Mono',monospace;margin-top:8px;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- WEATHER STRIP -->
+  <div id="weather-strip">
+    <div class="wx-current">
+      <div class="wx-icon" id="wx-icon">🌡️</div>
+      <div class="wx-vals">
+        <div class="wx-temp" id="wx-temp">--°</div>
+        <div class="wx-meta">
+          <span>Humidity <b id="wx-humid">--%</b></span>
+          <span>UV Index <b id="wx-uv">--</b></span>
+          <span>Wind <b id="wx-wind">-- mph</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="wx-pills" id="wx-pills">
+      <div class="wx-pill" id="pill-feels">Feels like <b id="wx-feels">--°F</b></div>
+      <div class="wx-pill" id="pill-rain">Rain today <b id="wx-rain">--"</b></div>
+    </div>
+    <div class="wx-forecast" id="wx-forecast">
+      <div style="font-size:10px; color:var(--muted); align-self:center; font-family:'DM Mono',monospace;">
+        Tap "Load Weather" for forecast
+      </div>
+    </div>
+  </div>
+
+  <!-- IRRIGATION STATUS -->
+  <div id="irr-strip">
+    <div class="irr-card">
+      <span class="irr-label">⚙️ Valve</span>
+      <span class="irr-val" id="irr-valve">--</span>
+    </div>
+    <div class="irr-card">
+      <span class="irr-label">💧 Flow</span>
+      <span class="irr-val" id="irr-flow">--</span>
+    </div>
+    <div class="irr-card">
+      <span class="irr-label">🔧 Supply</span>
+      <span class="irr-val" id="irr-supply">--</span>
+    </div>
+    <div class="irr-card">
+      <span class="irr-label">🔍 Leak</span>
+      <span class="irr-val" id="irr-leak">--</span>
+    </div>
+    <button class="watered-btn" id="btn-watered" onclick="manualWatered()">💧 Just Watered</button>
+  </div>
+
+  <!-- SHADE SCHEDULE CARD -->
+  <div id="shade-schedule">
+    <div class="shade-sched-header">
+      <div>
+        <h3>🌂 Shade Schedule <span id="shade-date-label" style="font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); font-weight:400; margin-left:6px;"></span></h3>
+        <p>AI-generated shade timing · Updates with PAM · Resets daily</p>
+      </div>
+      <div class="cache-row" id="shade-cache-row"></div>
+    </div>
+    <div id="shade-schedule-body">
+      <div class="shade-loading-txt">Runs automatically with PAM — tap ↺ Refresh below</div>
+    </div>
+  </div>
+
+  <!-- 3 BEDS -->
+  <div id="beds-grid">
+
+    <!-- BED 1: Tomatoes -->
+    <div class="bed-card bed-tomato">
+      <div class="bed-header">
+        <div class="bed-title">
+          <h3 class="tomato-c">Bed 1</h3>
+          <p id="bed-title-1">Beefsteak Tomatoes<br>+ White Onions</p>
+        </div>
+        <button class="analyze-btn" id="btn-bed1" onclick="askBed(1)">✨ Analyze</button>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sbox">
+          <div class="sbox-label">🌡️ Temp</div>
+          <div class="sbox-val" id="b1-temp" style="color:var(--tomato)">-- <span class="u">°F</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">💧 Moisture</div>
+          <div class="sbox-val" id="b1-moist" style="color:var(--water)">-- <span class="u">%</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">☀️ Light</div>
+          <div class="sbox-val" id="b1-light" style="color:var(--sun)">-- <span class="u">lx</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">🌱 Conductivity</div>
+          <div class="sbox-val" id="b1-cond" style="color:var(--green)">-- <span class="u">µS</span></div>
+        </div>
+        <div class="sbox span2">
+          <div class="sbox-label">💨 VPD (Air)</div>
+          <div class="sbox-val" id="b1-vpd" style="color:var(--purple)">-- <span class="u">kPa</span></div>
+        </div>
+      </div>
+
+      <div class="health-strip" id="b1-health">
+        <span id="b1-hmsg"></span>
+        <span id="b1-hrange" style="opacity:0.7; font-weight:400; font-size:9px;"></span>
+      </div>
+      <div class="advice-card" id="b1-advice" onclick="showModal(1)">
+        <span class="adv-icon" id="b1-adv-icon">🤖</span>
+        <div style="flex:1">
+          <div class="adv-text" id="b1-adv-text"></div>
+          <div class="adv-time" id="b1-adv-time"></div>
+        </div>
+      </div>
+
+      <div class="bed-footer">
+        <div class="watered-status" id="b1-watered">
+          <span class="wd"></span> Not watered yet
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <div class="cache-row" id="b1-cache-row"></div>
+          <div class="sensor-age" id="b1-age">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BED 2: Peppers -->
+    <div class="bed-card bed-pepper">
+      <div class="bed-header">
+        <div class="bed-title">
+          <h3 class="pepper-c">Bed 2</h3>
+          <p id="bed-title-2">Yolo Wonder Peppers<br>El Jefe Jalapeños + Onions</p>
+        </div>
+        <button class="analyze-btn" id="btn-bed2" onclick="askBed(2)">✨ Analyze</button>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sbox">
+          <div class="sbox-label">🌡️ Temp</div>
+          <div class="sbox-val" id="b2-temp" style="color:var(--pepper)">-- <span class="u">°F</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">💧 Moisture</div>
+          <div class="sbox-val" id="b2-moist" style="color:var(--water)">-- <span class="u">%</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">☀️ Light</div>
+          <div class="sbox-val" id="b2-light" style="color:var(--sun)">-- <span class="u">lx</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">🌱 Conductivity</div>
+          <div class="sbox-val" id="b2-cond" style="color:var(--green)">-- <span class="u">µS</span></div>
+        </div>
+        <div class="sbox span2">
+          <div class="sbox-label">💨 VPD (Air)</div>
+          <div class="sbox-val" id="b2-vpd" style="color:var(--purple)">-- <span class="u">kPa</span></div>
+        </div>
+      </div>
+
+      <div class="health-strip" id="b2-health"></div>
+      <div class="advice-card" id="b2-advice" onclick="showModal(2)">
+        <span class="adv-icon" id="b2-adv-icon">🤖</span>
+        <div style="flex:1">
+          <div class="adv-text" id="b2-adv-text"></div>
+          <div class="adv-time" id="b2-adv-time"></div>
+        </div>
+      </div>
+
+      <div class="bed-footer">
+        <div class="watered-status" id="b2-watered">
+          <span class="wd"></span> Not watered yet
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <div class="cache-row" id="b2-cache-row"></div>
+          <div class="sensor-age" id="b2-age">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BED 3: Strawberries -->
+    <div class="bed-card bed-straw">
+      <div class="bed-header">
+        <div class="bed-title">
+          <h3 class="straw-c">Bed 3</h3>
+          <p id="bed-title-3">Allstar Strawberries<br>Chandler Strawberries</p>
+        </div>
+        <button class="analyze-btn" id="btn-bed3" onclick="askBed(3)">✨ Analyze</button>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sbox">
+          <div class="sbox-label">🌡️ Temp</div>
+          <div class="sbox-val" id="b3-temp" style="color:var(--straw)">-- <span class="u">°F</span></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-label">💧 Moisture</div>
+          <div class="sbox-val" id="b3-moist" style="color:var(--water)">-- <span class="u">%</span></div>
+        </div>
+        <div class="sbox span2" style="background:var(--surface); border-style:dashed; opacity:0.5;">
+          <div class="sbox-label">📡 Third Reality Sensor</div>
+          <div style="font-size:9px; color:var(--muted); font-family:'DM Mono',monospace; margin-top:2px;">Zigbee · Moisture + Temp only</div>
+        </div>
+        <div class="sbox span2">
+          <div class="sbox-label">💨 VPD (Air)</div>
+          <div class="sbox-val" id="b3-vpd" style="color:var(--purple)">-- <span class="u">kPa</span></div>
+        </div>
+      </div>
+
+      <div class="health-strip" id="b3-health"></div>
+      <div class="advice-card" id="b3-advice" onclick="showModal(3)">
+        <span class="adv-icon" id="b3-adv-icon">🤖</span>
+        <div style="flex:1">
+          <div class="adv-text" id="b3-adv-text"></div>
+          <div class="adv-time" id="b3-adv-time"></div>
+        </div>
+      </div>
+
+      <div class="bed-footer">
+        <div class="watered-status" id="b3-watered">
+          <span class="wd"></span> Not watered yet
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          <div class="cache-row" id="b3-cache-row"></div>
+          <div class="sensor-age" id="b3-age">--</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /beds-grid -->
+
+  <!-- HARVEST COUNTDOWN -->
+  <div id="harvest-row">
+    <div class="harvest-card">
+      <div class="harvest-icon">🍅</div>
+      <div class="harvest-info">
+        <h4>Bed 1 · Beefsteak Tomatoes</h4>
+        <div class="hdays wait" id="h1-days">--</div>
+        <div class="hsub" id="h1-sub">Planted Feb 15 · ~75 days to harvest</div>
+        <div class="harvest-bar-wrap"><div class="harvest-bar" id="h1-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="harvest-card">
+      <div class="harvest-icon">🌶️</div>
+      <div class="harvest-info">
+        <h4>Bed 2 · Peppers & Jalapeños</h4>
+        <div class="hdays wait" id="h2-days">--</div>
+        <div class="hsub" id="h2-sub">Planted Feb 15 · ~70 days to harvest</div>
+        <div class="harvest-bar-wrap"><div class="harvest-bar" id="h2-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="harvest-card">
+      <div class="harvest-icon">🍓</div>
+      <div class="harvest-info">
+        <h4>Bed 3 · Strawberries</h4>
+        <div class="hdays wait" id="h3-days">--</div>
+        <div class="hsub" id="h3-sub">Planted Apr 12 · ~60 days to first fruit</div>
+        <div class="harvest-bar-wrap"><div class="harvest-bar" id="h3-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY CHARTS -->
+  <div id="history-section">
+    <div class="history-header">
+      <div>
+        <h2>📈 5-Day History</h2>
+        <p>Moisture & temperature from HA recorder · Loads automatically on connect</p>
+      </div>
+      <button class="history-load-btn" id="btn-history" onclick="loadHistory()">Load History</button>
+    </div>
+    <div id="history-charts">
+      <div class="hist-card">
+        <div class="hist-card-title"><span style="color:var(--tomato)">Bed 1 — Tomatoes</span> <span id="h-age-1">not loaded</span></div>
+        <div class="chart-wrap"><canvas id="chart1"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--water)"></div>Moisture %</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--tomato)"></div>Temp °F</div>
+        </div>
+      </div>
+      <div class="hist-card">
+        <div class="hist-card-title"><span style="color:var(--pepper)">Bed 2 — Peppers</span> <span id="h-age-2">not loaded</span></div>
+        <div class="chart-wrap"><canvas id="chart2"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--water)"></div>Moisture %</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--pepper)"></div>Temp °F</div>
+        </div>
+      </div>
+      <div class="hist-card">
+        <div class="hist-card-title"><span style="color:var(--straw)">Bed 3 — Strawberries</span> <span id="h-age-3">not loaded</span></div>
+        <div class="chart-wrap"><canvas id="chart3"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--water)"></div>Moisture %</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--straw)"></div>Temp °F</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI GENERAL SUMMARY -->
+  <div id="ai-summary-panel">
+    <div class="ai-sum-header">
+      <div>
+        <h3>🤖 PAM</h3>
+        <p>Auto-runs when weather loads · Combines all beds, forecast, shade & history</p>
+      </div>
+      <div class="ai-sum-actions">
+        <button class="ai-sum-refresh" id="btn-ai-summary" onclick="runAISummary(true)">↺ Refresh</button>
+        <button class="speak-btn" id="btn-speak" onclick="speakAdvice()">🔊 Speak</button>
+      </div>
+    </div>
+    <div id="ai-summary-body" class="loading">Waiting for weather to load…</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <div class="cache-row" id="intel-cache-row"></div>
+      <div class="ai-sum-meta" id="ai-sum-meta">--</div>
+    </div>
+  </div>
+
+  <!-- YAML SETUP PANEL -->
+  <div id="yaml-panel">
+    <div class="yaml-header">
+      <div>
+        <h3>⚙️ HA Setup — Persistent Watered Timestamps</h3>
+        <p>Add these 3 helpers to configuration.yaml → input_datetime: block, then restart HA</p>
+      </div>
+      <button class="yaml-copy-btn" id="yaml-copy-btn" onclick="copyYaml()">📋 Copy YAML</button>
+    </div>
+
+    <div class="yaml-code" id="yaml-block"># Add inside your input_datetime: block in configuration.yaml
+
+  garden_bed_1_last_watered:
+    name: "Garden Bed 1 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water
+
+  garden_bed_2_last_watered:
+    name: "Garden Bed 2 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water
+
+  garden_bed_3_last_watered:
+    name: "Garden Bed 3 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water-outline</div>
+
+    <div class="yaml-note">
+      💡 If you already have an <b>input_datetime:</b> block, paste just the entries inside it — don't duplicate the header.<br>
+      After restart, entities will appear as <b>input_datetime.garden_bed_1_last_watered / b2 / b3</b><br>
+      The 4 <b>input_text</b> helpers (garden_advice_b1/b2/b3, garden_intelligence) should already exist. Shade schedule is saved to localStorage only (resets daily by design).
+    </div>
+  </div>
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div id="modal">
+  <div id="modal-box">
+    <div class="modal-hdr">
+      <h3 id="modal-title">Garden Advice</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body">Loading…</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PAM — Plant Automation Manager v2.2
+   GitHub: https://github.com/YOUR_USERNAME/pam
+
+   SETUP: Add to your HA iframe URL —
+     ?token=YOUR_HA_TOKEN
+
+   REQUIRED: Edit the CONFIG block below before first use.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── URL PARAMS (do not edit) ─── */
+const params = new URLSearchParams(location.search);
+const TOKEN  = params.get('token') || '';
+const HA_URL = location.protocol + '//' + location.host;
+
+// Claude key: URL param → localStorage → empty (triggers setup modal on first run)
+let CLAUDE_KEY = params.get('claude_key') || localStorage.getItem('pam22_claude_key') || '';
+
+// If key came from URL, save it to localStorage for future loads
+if (params.get('claude_key')) {
+  localStorage.setItem('pam22_claude_key', params.get('claude_key'));
+}
+
+// AI mode — true = AI enabled, false = sensors only. Persists across reloads.
+let AI_MODE = localStorage.getItem('pam22_ai_mode') !== 'off';
+
+// Always embedded in HA — compact layout always active
+const EMBED_MODE = true;
+document.documentElement.classList.add('embed');
+
+/* ═══════════════════════════════════════════════════════════════
+   ██████╗  █████╗ ███╗   ███╗     ██████╗ ██████╗ ███╗   ██╗███████╗██╗ ██████╗
+   ██╔══██╗██╔══██╗████╗ ████║    ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
+   ██████╔╝███████║██╔████╔██║    ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+   ██╔═══╝ ██╔══██║██║╚██╔╝██║    ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+   ██║     ██║  ██║██║ ╚═╝ ██║    ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+   ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝     ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+   Edit everything in this block to match your setup.
+   ═══════════════════════════════════════════════════════════════ */
+
+const CONFIG = {
+
+  // ── Location ─────────────────────────────────────────────────
+  // Used for Open-Meteo weather. Find yours at: https://www.latlong.net
+  lat:      33.5,
+  lon:      -112.1,
+  timezone: 'America/Phoenix',   // IANA timezone string
+  location: 'Glendale, Arizona', // Used in AI prompts — update to your city
+
+  // ── TTS / Speaker ────────────────────────────────────────────
+  // Entity ID of your media player for "Speak" button
+  tts_player: 'media_player.tricorder',
+
+  // ── Bed Definitions ──────────────────────────────────────────
+  // name: shown in AI prompts and modals
+  // planted: ISO date string (YYYY-MM-DD)
+  // days_to_harvest: expected days from transplant to first harvest
+  // label: shown in harvest countdown
+  beds: [
+    { id: 1, name: 'Beefsteak Tomatoes & White Onions',              planted: '2026-02-15', days_to_harvest: 75, label: 'days to harvest'    },
+    { id: 2, name: 'Yolo Wonder Peppers, El Jefe Jalapeños & Onions', planted: '2026-02-15', days_to_harvest: 70, label: 'days to harvest'    },
+    { id: 3, name: 'Allstar & Chandler Strawberries',                 planted: '2026-04-12', days_to_harvest: 60, label: 'days to first fruit' },
+  ],
+
+  // ── Sensor Entities ──────────────────────────────────────────
+  // Bed 1 & 2: Xiaomi/HHCC Bluetooth sensors via BT proxy
+  // Update the proxy prefix if your entity names differ
+  sensors: {
+    bed1: {
+      temp:        'sensor.bluetooth_proxy_tomato_temperature',
+      moisture:    'sensor.bluetooth_proxy_tomato_moisture',
+      illuminance: 'sensor.bluetooth_proxy_tomato_illuminance',
+      conductivity:'sensor.bluetooth_proxy_tomato_conductivity',
+    },
+    bed2: {
+      temp:        'sensor.bluetooth_proxy_pepper_temperature',
+      moisture:    'sensor.bluetooth_proxy_pepper_moisture',
+      illuminance: 'sensor.bluetooth_proxy_pepper_illuminance',
+      conductivity:'sensor.bluetooth_proxy_pepper_conductivity',
+    },
+    bed3: {
+      // Third Reality Zigbee sensor — moisture + temp only
+      temp:        'sensor.third_reality_inc_3rsm0347z_temperature',
+      moisture:    'sensor.third_reality_inc_3rsm0347z_moisture',
+      illuminance: null,
+      conductivity: null,
+    },
+  },
+
+  // ── Weather Station Entities (local HA sensors) ───────────────
+  // Leave as null if you don't have a local station — Open-Meteo will be used instead
+  weather_station: {
+    temperature: 'sensor.ainven_temperature',
+    humidity:    'sensor.ainven_humidity',
+    uv_index:    'sensor.ainven_uv_index',
+    wind_speed:  'sensor.ainven_wind_speed',
+    wind_gust:   'sensor.ainven_wind_gust',
+    daily_rain:  'sensor.ainven_daily_rain',
+  },
+
+  // ── Irrigation Entities ───────────────────────────────────────
+  irrigation: {
+    valve:       'switch.irrigation',
+    flow_rate:   'sensor.irrigation_volume_flow_rate',
+    water_leak:  'binary_sensor.irrigation_water_leak',
+    water_supply:'binary_sensor.irrigation_water_supply',
+  },
+
+  // ── Persistent Helpers (input_datetime) ───────────────────────
+  // Create these via the YAML panel shown in the dashboard
+  watered_helpers: {
+    bed1: 'input_datetime.garden_bed_1_last_watered',
+    bed2: 'input_datetime.garden_bed_2_last_watered',
+    bed3: 'input_datetime.garden_bed_3_last_watered',
+  },
+
+  // ── AI Advice Cache (input_text) ─────────────────────────────
+  // These persist last AI advice across page reloads via HA
+  cache_helpers: {
+    bed1:  'input_text.input_text_garden_advice_b1',
+    bed2:  'input_text.input_text_garden_advice_b2',
+    bed3:  'input_text.input_text_garden_advice_b3',
+    intel: 'input_text.input_text_garden_intelligence',
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   END CONFIG — do not edit below unless you know what you're doing
+   ═══════════════════════════════════════════════════════════════ */
+
+// Flatten entity list for WebSocket subscription (auto-built from CONFIG)
+const ENTITIES = [
+  ...Object.values(CONFIG.sensors.bed1).filter(Boolean),
+  ...Object.values(CONFIG.sensors.bed2).filter(Boolean),
+  ...Object.values(CONFIG.sensors.bed3).filter(Boolean),
+  ...Object.values(CONFIG.weather_station).filter(Boolean),
+  ...Object.values(CONFIG.irrigation).filter(Boolean),
+  ...Object.values(CONFIG.watered_helpers).filter(Boolean),
+  'sun.sun',
+];
+
+let sm = {};
+let liveWeather = null;
+const adviceStore = { 1: null, 2: null, 3: null };
+
+/* ─── KEY MANAGEMENT & AI MODE ─── */
+function checkKeys() {
+  const banner = document.getElementById('no-key-banner');
+  if (!CLAUDE_KEY && AI_MODE) {
+    banner.style.display = 'block';
+    setTimeout(showKeyModal, 600);
+  } else {
+    banner.style.display = 'none';
+  }
+  applyAIMode();
+}
+
+function applyAIMode() {
+  // Toggle button appearance
+  const icon  = document.getElementById('ai-toggle-icon');
+  const label = document.getElementById('ai-toggle-label');
+  const btn   = document.getElementById('btn-ai-toggle');
+  if (AI_MODE) {
+    icon.textContent  = '🤖';
+    label.textContent = 'AI On';
+    btn.style.borderColor = 'rgba(188,140,255,0.4)';
+    btn.style.color       = '#bc8cff';
+    btn.style.background  = 'rgba(188,140,255,0.08)';
+  } else {
+    icon.textContent  = '📡';
+    label.textContent = 'Sensors';
+    btn.style.borderColor = 'rgba(255,255,255,0.07)';
+    btn.style.color       = '#6b7a8d';
+    btn.style.background  = 'var(--surface)';
+  }
+
+  // Show/hide AI buttons
+  ['btn-bed1','btn-bed2','btn-bed3','btn-ai-summary','btn-speak'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = AI_MODE ? '' : 'none';
+  });
+
+  // PAM summary panel message when AI off
+  const sumBody = document.getElementById('ai-summary-body');
+  const sumMeta = document.getElementById('ai-sum-meta');
+  if (!AI_MODE && sumBody) {
+    sumBody.className = 'loading';
+    sumBody.textContent = '📡 Sensors-only mode — AI disabled. Tap the 📡 Sensors button in the header to enable AI.';
+    if (sumMeta) sumMeta.textContent = '';
+  }
+
+  // Shade schedule message when AI off
+  const shadeBody = document.getElementById('shade-schedule-body');
+  if (!AI_MODE && shadeBody && shadeBody.querySelector('.shade-loading-txt')) {
+    shadeBody.innerHTML = '<div class="shade-loading-txt">📡 AI disabled — manage shade manually</div>';
+  }
+}
+
+function toggleAIMode() {
+  AI_MODE = !AI_MODE;
+  localStorage.setItem('pam22_ai_mode', AI_MODE ? 'on' : 'off');
+  applyAIMode();
+  // If switching AI on and no key yet, prompt for key
+  if (AI_MODE && !CLAUDE_KEY) {
+    document.getElementById('no-key-banner').style.display = 'block';
+    setTimeout(showKeyModal, 300);
+  } else {
+    document.getElementById('no-key-banner').style.display = 'none';
+  }
+}
+
+function showKeyModal() {
+  const modal = document.getElementById('key-modal');
+  const input = document.getElementById('key-input');
+  modal.style.display = 'flex';
+  // Pre-fill with current key if exists (masked by type=password)
+  if (CLAUDE_KEY) input.value = CLAUDE_KEY;
+  setTimeout(() => input.focus(), 100);
+}
+
+function closeKeyModal() {
+  document.getElementById('key-modal').style.display = 'none';
+  document.getElementById('key-error').style.display = 'none';
+}
+
+function saveKey() {
+  const input = document.getElementById('key-input');
+  const errEl = document.getElementById('key-error');
+  const val = input.value.trim();
+
+  if (!val) {
+    errEl.textContent = 'Please enter a key.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!val.startsWith('sk-ant-')) {
+    errEl.textContent = 'Key should start with sk-ant-... — check and try again.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  CLAUDE_KEY = val;
+  localStorage.setItem('pam22_claude_key', val);
+  closeKeyModal();
+  checkKeys();
+
+  // Auto-load weather + AI if not already run
+  if (!liveWeather) loadWeather();
+}
+
+function forgetKey() {
+  if (!confirm('Remove saved API key from this browser?')) return;
+  localStorage.removeItem('pam22_claude_key');
+  CLAUDE_KEY = '';
+  checkKeys();
+}
+
+/* ─── MOISTURE WATERING DETECTION ─── */
+const MOISTURE_RISE_THRESHOLD = 3;
+const DEBOUNCE_MINS = 20;
+const mPrev   = { 1: null, 2: null, 3: null };
+const mHist   = { 1: [], 2: [], 3: [] };
+const lastAutoStamp = { 1: 0, 2: 0, 3: 0 };
+const localWatered = { 1: null, 2: null, 3: null };
+
+function trackMoisture(bed, val) {
+  if (val === null || isNaN(val)) return;
+  const h = mHist[bed];
+  h.push({ val, ts: Date.now() });
+  if (h.length > 8) h.shift();
+  const prev = mPrev[bed];
+  if (prev !== null) {
+    const rise = val - prev;
+    const minsSince = (Date.now() - lastAutoStamp[bed]) / 60000;
+    if (rise >= MOISTURE_RISE_THRESHOLD && minsSince >= DEBOUNCE_MINS) {
+      autoStamp(bed, rise);
+    }
+  }
+  mPrev[bed] = val;
+}
+
+function getMoistureTrend(bed) {
+  const h = mHist[bed];
+  if (h.length < 3) return 'stable';
+  const delta = h[h.length-1].val - h[0].val;
+  if (delta > 4) return '↑ rising';
+  if (delta < -4) return '↓ falling';
+  return '→ stable';
+}
+
+async function autoStamp(bed, rise) {
+  lastAutoStamp[bed] = Date.now();
+  localWatered[bed] = new Date();
+  updateWatered(bed);
+  const entity = CONFIG.watered_helpers['bed'+bed];
+  try {
+    const now = new Date();
+    await fetch(HA_URL + '/api/services/input_datetime/set_datetime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({
+        entity_id: entity,
+        date: now.toISOString().slice(0,10),
+        time: now.toTimeString().slice(0,8)
+      })
+    });
+  } catch(e) { console.warn('Auto stamp write failed:', e); }
+}
+
+async function manualWatered() {
+  const btn = document.getElementById('btn-watered');
+  btn.textContent = '💧 Saving…'; btn.disabled = true;
+  const now = new Date();
+  for (const bed of [1,2,3]) {
+    localWatered[bed] = now;
+    updateWatered(bed);
+    const entity = CONFIG.watered_helpers['bed'+bed];
+    try {
+      await fetch(HA_URL + '/api/services/input_datetime/set_datetime', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+        body: JSON.stringify({ entity_id: entity, date: now.toISOString().slice(0,10), time: now.toTimeString().slice(0,8) })
+      });
+    } catch(e) {}
+  }
+  btn.textContent = '✓ Logged!'; btn.className = 'watered-btn done';
+  setTimeout(() => { btn.textContent = '💧 Just Watered'; btn.className = 'watered-btn'; btn.disabled = false; }, 3000);
+}
+
+function getWateredTime(bed) {
+  const entity = CONFIG.watered_helpers['bed'+bed];
+  const state = sm[entity]?.state;
+  let t = null;
+  if (state && state !== 'unknown' && state !== 'unavailable') {
+    t = new Date(state);
+    if (isNaN(t)) t = null;
+  }
+  if (!t) t = localWatered[bed];
+  return t;
+}
+
+function fmtAgo(date) {
+  if (!date) return null;
+  const mins = Math.floor((Date.now() - date) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function updateWatered(bed) {
+  const el = document.getElementById('b'+bed+'-watered');
+  if (!el) return;
+  const t = getWateredTime(bed);
+  const ago = fmtAgo(t);
+  if (ago) {
+    el.innerHTML = `<span class="wd"></span> Watered ${ago}`;
+    el.className = 'watered-status active';
+  } else {
+    el.innerHTML = `<span class="wd"></span> Not watered yet`;
+    el.className = 'watered-status';
+  }
+}
+setInterval(() => { updateWatered(1); updateWatered(2); updateWatered(3); }, 60000);
+
+function updateTransplantBadges() {
+  const now = new Date();
+  HARVEST.forEach(h => {
+    const daysOld = Math.floor((now - h.planted) / 86400000);
+    const badgeId = 'transplant-badge-' + h.bed;
+    let badge = document.getElementById(badgeId);
+    const titleEl = document.querySelector('#bed-title-' + h.bed);
+    if (daysOld <= 7) {
+      if (!badge && titleEl) {
+        badge = document.createElement('span');
+        badge.id = badgeId;
+        badge.className = 'transplant-badge';
+        badge.textContent = '🌱 Day ' + daysOld + ' transplant';
+        titleEl.appendChild(badge);
+      } else if (badge) {
+        badge.textContent = '🌱 Day ' + daysOld + ' transplant';
+      }
+    } else {
+      if (badge) badge.remove();
+    }
+  });
+}
+
+/* ─── CLOCK ─── */
+function tickClock() {
+  const now = new Date();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `Plant Automation Manager · ${days[now.getDay()]} ${months[now.getMonth()]} ${now.getDate()} · ${hh}:${mm}`;
+}
+tickClock(); setInterval(tickClock, 1000);
+
+/* ─── HELPERS ─── */
+function safeNum(v) {
+  if (!v || v === 'unknown' || v === 'unavailable') return null;
+  const n = parseFloat(v); return isNaN(n) ? null : n;
+}
+function fmt(v, dec=1) {
+  if (v === null || isNaN(v)) return '--';
+  return v % 1 === 0 ? String(v) : v.toFixed(dec);
+}
+function setVal(id, val, unit='') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = val === null ? `-- <span class="u">${unit}</span>` : `${fmt(val)} <span class="u">${unit}</span>`;
+}
+function fmtSensorAge(iso) {
+  if (!iso) return '--';
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+}
+function calcVPD(tempF, rh) {
+  if (tempF === null || rh === null) return null;
+  const tC = (tempF - 32) * 5/9;
+  const sat = 0.61078 * Math.exp((17.27 * tC) / (tC + 237.3));
+  return sat - sat * (rh/100);
+}
+
+/* ─── WEATHER ─── */
+function wmoEmoji(c) {
+  if (c===0) return '☀️';
+  if (c<=2) return '🌤️';
+  if (c===3) return '☁️';
+  if (c<=49) return '🌫️';
+  if (c<=67) return '🌦️';
+  if (c<=77) return '🌨️';
+  if (c<=82) return '🌧️';
+  if (c<=99) return '⛈️';
+  return '🌡️';
+}
+
+async function loadWeather() {
+  const btn = document.getElementById('btn-weather');
+  btn.disabled = true; btn.textContent = '⏳ Loading…';
+  try {
+    const r = await fetch(
+      `https://api.open-meteo.com/v1/forecast` +
+      `?latitude=${CONFIG.lat}&longitude=${CONFIG.lon}` +
+      `&current=temperature_2m,relative_humidity_2m,uv_index,wind_speed_10m,weather_code,apparent_temperature` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+      `&temperature_unit=fahrenheit&wind_speed_unit=mph` +
+      `&timezone=${encodeURIComponent(CONFIG.timezone)}&forecast_days=4`
+    );
+    const d = await r.json();
+    const c = d.current;
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    liveWeather = {
+      temp: Math.round(c.temperature_2m),
+      feels: Math.round(c.apparent_temperature),
+      humid: Math.round(c.relative_humidity_2m),
+      uv: parseFloat(c.uv_index.toFixed(1)),
+      wind: Math.round(c.wind_speed_10m),
+      icon: wmoEmoji(c.weather_code),
+      forecast: d.daily.time.slice(0,4).map((t,i) => ({
+        day: dayNames[new Date(t+'T12:00:00').getDay()],
+        icon: wmoEmoji(d.daily.weather_code[i]),
+        hi: Math.round(d.daily.temperature_2m_max[i]),
+        lo: Math.round(d.daily.temperature_2m_min[i])
+      }))
+    };
+    render();
+    if (!summaryRan && AI_MODE) runAISummary();
+  } catch(e) {
+    console.error('Weather load failed:', e);
+  }
+  btn.disabled = false; btn.textContent = '⛅ Reload';
+}
+
+/* ─── SHADE SCHEDULE ─── */
+function renderShadeSchedule(data, ts, fromCache) {
+  const body = document.getElementById('shade-schedule-body');
+  if (!body) return;
+  if (!data) {
+    body.innerHTML = '<div class="shade-loading-txt">Runs automatically with PAM — tap ↺ Refresh below</div>';
+    return;
+  }
+  const g12 = data.beds_12 || {};
+  const g3  = data.bed_3   || {};
+  function makePills(schedule) {
+    if (!schedule || !schedule.times || schedule.times.length === 0) {
+      return '<span class="shade-time-pill">No change needed today</span>';
+    }
+    return schedule.times.map(t =>
+      `<span class="shade-time-pill ${t.action === 'DOWN' ? 'down' : 'up'}">
+        ${t.action === 'DOWN' ? '⬇' : '⬆'} ${t.time}
+      </span>`
+    ).join('');
+  }
+  body.innerHTML = `
+    <div class="shade-group-card">
+      <div class="shade-group-title">
+        <div class="sdot ${g12.currently_down ? 'active' : ''}"></div>
+        Beds 1 & 2 — Tomatoes & Peppers
+      </div>
+      <div class="shade-time-row">${makePills(g12)}</div>
+      <div class="shade-reason-txt">${g12.reason || ''}</div>
+    </div>
+    <div class="shade-group-card">
+      <div class="shade-group-title">
+        <div class="sdot ${g3.currently_down ? 'active' : ''}"></div>
+        Bed 3 — Strawberries
+      </div>
+      <div class="shade-time-row">${makePills(g3)}</div>
+      <div class="shade-reason-txt">${g3.reason || ''}</div>
+    </div>`;
+  const dateLabel = document.getElementById('shade-date-label');
+  if (dateLabel) {
+    const d = ts ? new Date(ts) : new Date();
+    dateLabel.textContent = '· ' + d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  }
+  sessionFresh.shade = !fromCache;
+  renderCacheBadge('shade-cache-row', 'shade', ts);
+}
+
+async function runShadeSchedule(ctx) {
+  const n = (v, u='') => v !== null ? Number(v).toFixed(1)+u : 'unknown';
+  const forecast = liveWeather?.forecast?.map(f => `${f.day}: ${f.icon} ${f.hi}°/${f.lo}°`).join(', ') || 'unavailable';
+  const prompt = `You are a garden advisor for ${CONFIG.location}. Today is ${ctx.now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}.
+Current time: ${String(ctx.hour).padStart(2,'0')}:00 (${ctx.timeOfDay})
+Current weather: ${n(ctx.wx.temp,'°F')}, UV ${n(ctx.wx.uv)}, Humidity ${n(ctx.wx.humid,'%')}, Wind ${n(ctx.wx.wind,' mph')}
+Today's forecast: ${forecast}
+Sun elevation now: ${n(ctx.sun.elev)}°
+
+Two shade cloth groups:
+- Beds 1 & 2: Beefsteak Tomatoes, Yolo Wonder Peppers, El Jefe Jalapeños (shade above UV 6 or 100°F)
+- Bed 3: Allstar & Chandler Strawberries (shade above UV 7 or 105°F)
+
+Provide a full-day shade schedule with exact times to pull down and put up each group.
+Rules: DOWN when UV≥6 or temp≥100°F or sun elevation>55°. UP when UV<5, after 5pm, or if cloudy/storm.
+
+Respond ONLY with valid JSON — no markdown, no extra text:
+{
+  "beds_12": {
+    "currently_down": false,
+    "times": [{"time": "10:30 AM", "action": "DOWN"}, {"time": "5:00 PM", "action": "UP"}],
+    "reason": "one sentence"
+  },
+  "bed_3": {
+    "currently_down": false,
+    "times": [{"time": "11:00 AM", "action": "DOWN"}, {"time": "5:30 PM", "action": "UP"}],
+    "reason": "one sentence"
+  }
+}`;
+  const raw = await callClaude(prompt);
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('No JSON in shade response');
+  const parsed = JSON.parse(match[0]);
+  const ts = new Date().toISOString();
+  try { localStorage.setItem(LS_KEYS.shade, JSON.stringify({ ts, data: parsed })); } catch(e) {}
+  renderShadeSchedule(parsed, ts, false);
+  return parsed;
+}
+
+function restoreShadeCache() {
+  try {
+    const raw = localStorage.getItem(LS_KEYS.shade);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.ts || !parsed?.data) return;
+    if (new Date(parsed.ts).toDateString() !== new Date().toDateString()) {
+      localStorage.removeItem(LS_KEYS.shade); return;
+    }
+    renderShadeSchedule(parsed.data, parsed.ts, true);
+  } catch(e) { console.warn('Shade cache restore failed:', e); }
+}
+
+/* ─── BED AI ─── */
+async function askBed(bed) {
+  if (!AI_MODE) return;
+  if (!CLAUDE_KEY) { showKeyModal(); return; }
+  const btn = document.getElementById('btn-bed' + bed);
+  btn.disabled = true; btn.innerHTML = '✨…';
+  const adv = document.getElementById('b'+bed+'-advice');
+  adv.className = 'advice-card visible loading';
+  document.getElementById('b'+bed+'-adv-icon').textContent = '✨';
+  document.getElementById('b'+bed+'-adv-text').textContent = 'Analyzing…';
+  document.getElementById('b'+bed+'-adv-time').textContent = '';
+  try {
+    const ctx = getContext();
+    const bedData = ctx.beds[bed];
+    const prompt = buildBedPrompt(bed, bedData, ctx);
+    const raw = await callClaude(prompt);
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON in response');
+    const p = JSON.parse(match[0]);
+    const b = p.bed;
+    const hs = document.getElementById('b'+bed+'-health');
+    hs.className = 'health-strip ' + (b.health_status || 'good');
+    hs.innerHTML = `<span>${b.health_msg || ''}</span><span style="opacity:0.7;font-weight:400;font-size:9px;">${b.ideal_ranges || ''}</span>`;
+    const d = { level: b.level, summary: b.summary, detail: b.detail, plantName: bedData.name, time: new Date() };
+    adviceStore[bed] = d;
+    const level = b.level || 'good';
+    adv.className = 'advice-card visible ' + level;
+    document.getElementById('b'+bed+'-adv-icon').textContent = level==='urgent'?'🔴':level==='warn'?'🟡':'✅';
+    document.getElementById('b'+bed+'-adv-text').textContent = b.summary;
+    const now = new Date();
+    document.getElementById('b'+bed+'-adv-time').textContent =
+      `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} · Claude Haiku`;
+    await saveCache('bed'+bed, b.detail, b.summary);
+  } catch(e) {
+    adviceStore[bed] = { level:'error', summary:'Analysis failed — tap to retry', detail: e.message };
+    const adv2 = document.getElementById('b'+bed+'-advice');
+    adv2.className = 'advice-card visible warn';
+    document.getElementById('b'+bed+'-adv-icon').textContent = '⚠️';
+    document.getElementById('b'+bed+'-adv-text').textContent = 'Analysis failed — tap to retry';
+    document.getElementById('b'+bed+'-adv-time').textContent = e.message.slice(0,60);
+  }
+  btn.disabled = false; btn.innerHTML = '↺ Update';
+}
+
+function buildBedPrompt(bed, data, ctx) {
+  const n = (v, u='') => v !== null ? Number(v).toFixed(v%1===0?0:1)+u : 'unknown';
+  const h = HARVEST[bed-1];
+  const daysOld = Math.floor((new Date() - h.planted) / 86400000);
+  const isNew = daysOld <= 7;
+  const newNote = isNew
+    ? `\nNOTE: Planted ${daysOld === 0 ? 'TODAY' : daysOld + ' days ago'}. High moisture is correct — transplant soak. Do not flag as overwatering. Focus on transplant success and root establishment.`
+    : '';
+  const schema = {
+    bed: {
+      health_status: "good|warn|bad",
+      health_msg: "max 5 words with emoji",
+      ideal_ranges: "e.g. '🌡 70-85°F 💧 40-60%'",
+      level: "urgent|warn|good",
+      summary: "max 12 words — direct action or status",
+      detail: "5 specific, actionable bullet points"
+    }
+  };
+  return `Expert garden advisor. ${CONFIG.location}. ${ctx.timeOfDay}, ${ctx.hour}:00.
+Outside: ${n(ctx.wx.temp,'°F')}, UV ${n(ctx.wx.uv)}, Humidity ${n(ctx.wx.humid,'%')}.
+Bed age: ${daysOld} days (planted ${h.planted.toLocaleDateString('en-US',{month:'short',day:'numeric'})}).${newNote}
+
+BED ${bed} — ${data.name}
+Soil Temp: ${n(data.t,'°F')} | Moisture: ${n(data.m,'%')} (${data.trend}) | Light: ${n(data.l,'lx')} | Conductivity: ${n(data.c,'µS')} | VPD: ${n(data.vpd,'kPa')}
+
+Desert climate rules: soil >95°F = root stress. VPD 0.8-1.5kPa optimal for fruiting. Moisture 40-70% ideal for established beds.
+Be direct. No filler. Specific numbers and actions only.
+
+Respond ONLY with valid JSON:
+${JSON.stringify(schema, null, 2)}`;
+}
+
+/* ─── CLAUDE API ─── */
+async function callClaude(prompt) {
+  if (!CLAUDE_KEY) throw new Error('No API key — add ?claude_key= to URL');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || 'API error');
+  const text = d.content?.[0]?.text;
+  if (!text) throw new Error('Empty response');
+  return text;
+}
+
+/* ─── CONTEXT BUILDER ─── */
+function getContext() {
+  const now = new Date(), hour = now.getHours();
+  const timeOfDay = hour<6?'night':hour<10?'morning':hour<14?'midday':hour<18?'afternoon':'evening';
+  const sunA = sm['sun.sun']?.attributes || {};
+  const ws   = CONFIG.weather_station;
+  const ambT = safeNum(sm[ws.temperature]?.state);
+  const ambH = safeNum(sm[ws.humidity]?.state);
+  const ambU = safeNum(sm[ws.uv_index]?.state);
+  const ambW = safeNum(sm[ws.wind_gust]?.state) || safeNum(sm[ws.wind_speed]?.state);
+  const ambR = safeNum(sm[ws.daily_rain]?.state);
+  const temp  = liveWeather ? liveWeather.temp  : ambT;
+  const humid = liveWeather ? liveWeather.humid : ambH;
+  const uv    = liveWeather ? liveWeather.uv    : ambU;
+  const wind  = liveWeather ? liveWeather.wind  : ambW;
+  const icon  = liveWeather ? liveWeather.icon  : '📡';
+  const s = CONFIG.sensors;
+  const g = (bedKey, metric) => safeNum(sm[s[bedKey][metric]]?.state);
+  const vpd = calcVPD(temp, humid);
+  return {
+    hour, timeOfDay, now,
+    wx: { temp, humid, uv, wind, icon, rain: ambR },
+    sun: { elev: safeNum(String(sunA.elevation||'')), azimuth: safeNum(String(sunA.azimuth||'')), state: sm['sun.sun']?.state },
+    beds: {
+      1: { name: CONFIG.beds[0].name, t:g('bed1','temp'), m:g('bed1','moisture'), l:g('bed1','illuminance'), c:g('bed1','conductivity'), vpd, trend:getMoistureTrend(1) },
+      2: { name: CONFIG.beds[1].name, t:g('bed2','temp'), m:g('bed2','moisture'), l:g('bed2','illuminance'), c:g('bed2','conductivity'), vpd, trend:getMoistureTrend(2) },
+      3: { name: CONFIG.beds[2].name, t:g('bed3','temp'), m:g('bed3','moisture'), l: null, c: null,           vpd, trend:getMoistureTrend(3) },
+    }
+  };
+}
+
+/* ─── RENDER ─── */
+function render() {
+  const ctx = getContext();
+  const { wx, beds } = ctx;
+  const wsE  = CONFIG.weather_station;
+  const ambT = safeNum(sm[wsE.temperature]?.state);
+  const ambH = safeNum(sm[wsE.humidity]?.state);
+  const ambU = safeNum(sm[wsE.uv_index]?.state);
+  const ambW = safeNum(sm[wsE.wind_speed]?.state);
+  const ambR = safeNum(sm[wsE.daily_rain]?.state);
+  const ambG = safeNum(sm[wsE.wind_gust]?.state);
+  const dispT = liveWeather ? liveWeather.temp  : ambT;
+  const dispH = liveWeather ? liveWeather.humid : ambH;
+  const dispU = liveWeather ? liveWeather.uv    : ambU;
+  const dispW = liveWeather ? liveWeather.wind  : (ambG || ambW);
+  const dispI = liveWeather ? liveWeather.icon  : '📡';
+  document.getElementById('wx-icon').textContent  = dispI;
+  document.getElementById('wx-temp').textContent  = dispT !== null ? Math.round(dispT) + '°' : '--°';
+  document.getElementById('wx-humid').textContent = dispH !== null ? Math.round(dispH) + '%' : '--%';
+  document.getElementById('wx-wind').textContent  = dispW !== null ? Math.round(dispW) + ' mph' : '-- mph';
+  document.getElementById('wx-uv').textContent    = dispU !== null ? dispU : '--';
+  document.getElementById('wx-feels').textContent = liveWeather?.feels != null ? liveWeather.feels + '°F' : (dispT !== null ? Math.round(dispT) + '°F' : '--°F');
+  document.getElementById('wx-rain').textContent  = ambR !== null ? ambR.toFixed(2) + '"' : (liveWeather ? '0.00"' : '--"');
+  const fcEl = document.getElementById('wx-forecast');
+  if (liveWeather?.forecast) {
+    fcEl.innerHTML = liveWeather.forecast.map(f => `
+      <div class="fc-day">
+        <span class="fc-label">${f.day}</span>
+        <span class="fc-icon">${f.icon}</span>
+        <span class="fc-hi">${f.hi}°</span>
+        <span class="fc-lo">${f.lo}°</span>
+      </div>`).join('');
+  }
+  const vpd = calcVPD(dispT, dispH);
+  const t1 = beds[1].t, m1 = beds[1].m, l1 = beds[1].l, c1 = beds[1].c;
+  setVal('b1-temp', t1, '°F'); setVal('b1-moist', m1, '%');
+  setVal('b1-light', l1, 'lx'); setVal('b1-cond', c1, 'µS');
+  setVal('b1-vpd', vpd, 'kPa');
+  trackMoisture(1, m1);
+  document.getElementById('b1-age').textContent = fmtSensorAge(sm[CONFIG.sensors.bed1.temp]?.last_changed);
+  const t2 = beds[2].t, m2 = beds[2].m, l2 = beds[2].l, c2 = beds[2].c;
+  setVal('b2-temp', t2, '°F'); setVal('b2-moist', m2, '%');
+  setVal('b2-light', l2, 'lx'); setVal('b2-cond', c2, 'µS');
+  setVal('b2-vpd', vpd, 'kPa');
+  trackMoisture(2, m2);
+  document.getElementById('b2-age').textContent = fmtSensorAge(sm[CONFIG.sensors.bed2.temp]?.last_changed);
+  const t3 = beds[3].t, m3 = beds[3].m;
+  setVal('b3-temp', t3, '°F'); setVal('b3-moist', m3, '%');
+  setVal('b3-vpd', vpd, 'kPa');
+  trackMoisture(3, m3);
+  document.getElementById('b3-age').textContent = fmtSensorAge(sm[CONFIG.sensors.bed3.temp]?.last_changed);
+  updateWatered(1); updateWatered(2); updateWatered(3);
+  updateTransplantBadges();
+  checkYamlPanelVisibility();
+  const valve  = sm[CONFIG.irrigation.valve]?.state;
+  const flow   = safeNum(sm[CONFIG.irrigation.flow_rate]?.state);
+  const supply = sm[CONFIG.irrigation.water_supply]?.state;
+  const leak   = sm[CONFIG.irrigation.water_leak]?.state;
+  const ve = document.getElementById('irr-valve');
+  if (valve==='on')  { ve.textContent='ON';  ve.className='irr-val on'; }
+  else if (valve==='off') { ve.textContent='OFF'; ve.className='irr-val'; }
+  else { ve.textContent='--'; ve.className='irr-val'; }
+  const fe = document.getElementById('irr-flow');
+  fe.textContent = flow !== null ? flow.toFixed(2)+' m³/h' : '--';
+  fe.className = 'irr-val ' + (flow > 0 ? 'on' : '');
+  const se = document.getElementById('irr-supply');
+  if (supply==='off') { se.textContent='✓ OK';    se.className='irr-val ok'; }
+  else if (supply==='on') { se.textContent='⚠ Issue'; se.className='irr-val warn'; }
+  else { se.textContent='--'; se.className='irr-val'; }
+  const le = document.getElementById('irr-leak');
+  if (leak==='off') { le.textContent='Dry';   le.className='irr-val ok'; }
+  else if (leak==='on') { le.textContent='⚠ WET'; le.className='irr-val bad'; }
+  else { le.textContent='--'; le.className='irr-val'; }
+}
+
+/* ─── MODAL ─── */
+function showModal(bed) {
+  const d = adviceStore[bed];
+  if (!d || d.level === 'error') { if (d?.level === 'error') askBed(bed); return; }
+  document.getElementById('modal-title').textContent = 'Bed ' + bed + ' — ' + d.plantName;
+  const t = d.time ? d.time.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  const cleanDetail = d.detail.replace(/[*][*](.+?)[*][*]/g, '$1').replace(/[*](.+?)[*]/g, '$1');
+  document.getElementById('modal-body').textContent = (t ? `Analysis at ${t} via Claude Haiku\n\n` : '') + cleanDetail;
+  document.getElementById('modal').className = 'open';
+}
+function closeModal() { document.getElementById('modal').className = ''; }
+
+/* ─── CACHE / PERSISTENCE SYSTEM ─── */
+const CACHE_ENTITIES = CONFIG.cache_helpers;
+const LS_KEYS = {
+  bed1:  'pam22_advice_b1',
+  bed2:  'pam22_advice_b2',
+  bed3:  'pam22_advice_b3',
+  intel: 'pam22_intelligence',
+  shade: 'pam22_shade_schedule',
+};
+const sessionFresh = { bed1: false, bed2: false, bed3: false, intel: false, shade: false };
+// Add cache helper entities to subscription list
+Object.values(CACHE_ENTITIES).forEach(e => { if (e && !ENTITIES.includes(e)) ENTITIES.push(e); });
+
+function fmtCacheTime(isoStr) {
+  if (!isoStr) return null;
+  const d = new Date(isoStr);
+  if (isNaN(d)) return null;
+  const diffMins = Math.floor((Date.now() - d) / 60000);
+  if (diffMins < 1)  return 'just now';
+  if (diffMins < 60) return diffMins + 'm ago';
+  const h = Math.floor(diffMins / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function renderCacheBadge(rowId, key, tsIso) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const ago = fmtCacheTime(tsIso);
+  if (!ago) { row.innerHTML = ''; return; }
+  if (sessionFresh[key]) {
+    row.innerHTML = `<span class="fresh-badge">✓ Updated ${ago}</span>`;
+  } else {
+    row.innerHTML = `<span class="stale-badge">⚠ Cached ${ago} — refresh to update</span>`;
+  }
+}
+
+async function writeCacheHA(entityId, summary, tsIso) {
+  const payload = JSON.stringify({ ts: tsIso, s: summary.slice(0, 190) });
+  try {
+    await fetch(HA_URL + '/api/services/input_text/set_value', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ entity_id: entityId, value: payload })
+    });
+  } catch(e) { console.warn('Cache HA write failed:', e); }
+}
+
+function writeCacheLocal(lsKey, fullText, tsIso) {
+  try { localStorage.setItem(lsKey, JSON.stringify({ ts: tsIso, text: fullText })); }
+  catch(e) { console.warn('Cache localStorage write failed:', e); }
+}
+
+async function saveCache(key, fullText, summaryText) {
+  const ts = new Date().toISOString();
+  writeCacheLocal(LS_KEYS[key], fullText, ts);
+  await writeCacheHA(CACHE_ENTITIES[key], summaryText || fullText.slice(0, 190), ts);
+  sessionFresh[key] = true;
+  const bedNum = key.replace('bed','');
+  renderCacheBadge('b' + bedNum + '-cache-row', key, ts);
+  if (key === 'intel') renderCacheBadge('intel-cache-row', 'intel', ts);
+  return ts;
+}
+
+function readCacheLocal(lsKey) {
+  try { const r = localStorage.getItem(lsKey); return r ? JSON.parse(r) : null; }
+  catch(e) { return null; }
+}
+
+function readCacheHA(entityId) {
+  const state = sm[entityId]?.state;
+  if (!state || state === 'unknown' || state === 'unavailable' || state === '') return null;
+  try { return JSON.parse(state); } catch(e) { return null; }
+}
+
+function restoreBedCache(bed) {
+  const key    = 'bed' + bed;
+  const lsData = readCacheLocal(LS_KEYS[key]);
+  const haData = readCacheHA(CACHE_ENTITIES[key]);
+  const ts     = haData?.ts || lsData?.ts || null;
+  const full   = lsData?.text || null;
+  const summ   = haData?.s || lsData?.text?.slice(0, 100) || null;
+  if (!ts || (!full && !summ)) return;
+  const detailText = full || (summ ? summ + '… [tap ↺ Analyze for full advice]' : '');
+  const bedNames = ['', ...CONFIG.beds.map(b => b.name)];
+  adviceStore[bed] = { level:'good', summary: summ?.slice(0,100), detail: detailText, plantName: bedNames[bed], time: new Date(ts), cached: true };
+  const adv = document.getElementById('b'+bed+'-advice');
+  if (adv) {
+    adv.className = 'advice-card visible good';
+    document.getElementById('b'+bed+'-adv-icon').textContent = '📋';
+    document.getElementById('b'+bed+'-adv-text').textContent = summ?.slice(0,100) || 'Tap to view cached advice';
+    document.getElementById('b'+bed+'-adv-time').textContent = fmtCacheTime(ts) + ' · cached · tap to view';
+  }
+  renderCacheBadge('b'+bed+'-cache-row', key, ts);
+}
+
+function restoreIntelCache() {
+  const lsData = readCacheLocal(LS_KEYS.intel);
+  const haData = readCacheHA(CACHE_ENTITIES.intel);
+  const ts   = haData?.ts || lsData?.ts || null;
+  const fullText = lsData?.text || null;
+  const shortText = haData?.s || null;
+  if (!ts) return;
+  const body = document.getElementById('ai-summary-body');
+  const meta = document.getElementById('ai-sum-meta');
+  if (fullText) {
+    if (body) { body.className = ''; body.textContent = fullText; }
+    if (meta) meta.textContent = `Generated ${new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · cached`;
+  } else if (shortText) {
+    if (body) {
+      body.className = '';
+      body.textContent = shortText + '… [tap ↺ Refresh for full analysis]';
+    }
+    if (meta) meta.textContent = `Generated ${new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · partial cache`;
+  } else { return; }
+  renderCacheBadge('intel-cache-row', 'intel', ts);
+}
+
+function restoreAllCaches() {
+  restoreBedCache(1); restoreBedCache(2); restoreBedCache(3);
+  restoreIntelCache(); restoreShadeCache();
+}
+
+/* ─── WEBSOCKET ─── */
+let ws, msgId = 1;
+function connect() {
+  document.getElementById('conn-dot').className = 'conn-dot';
+  document.getElementById('conn-label').textContent = 'connecting';
+  ws = new WebSocket(HA_URL.replace(/^http/,'ws') + '/api/websocket');
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'auth_required') {
+      ws.send(JSON.stringify({ type: 'auth', access_token: TOKEN }));
+    } else if (m.type === 'auth_ok') {
+      document.getElementById('conn-dot').className = 'conn-dot ok';
+      document.getElementById('conn-label').textContent = 'live';
+      ws.send(JSON.stringify({ id: msgId++, type: 'get_states' }));
+    } else if (m.type === 'auth_invalid') {
+      document.getElementById('conn-dot').className = 'conn-dot err';
+      document.getElementById('conn-label').textContent = 'auth error';
+    } else if (m.type === 'result' && m.success && Array.isArray(m.result)) {
+      m.result.forEach(e => { if (ENTITIES.includes(e.entity_id)) sm[e.entity_id] = e; });
+      render();
+      restoreAllCaches();
+      loadHistory();
+      ws.send(JSON.stringify({ id: msgId++, type: 'subscribe_events', event_type: 'state_changed' }));
+    } else if (m.type === 'event' && m.event?.event_type === 'state_changed') {
+      const d = m.event.data;
+      if (ENTITIES.includes(d.entity_id)) { sm[d.entity_id] = d.new_state; render(); }
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('conn-dot').className = 'conn-dot err';
+    document.getElementById('conn-label').textContent = 'reconnecting';
+    setTimeout(connect, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+/* ─── YAML COPY ─── */
+function copyYaml() {
+  const yaml = `# Add inside your input_datetime: block in configuration.yaml
+
+  garden_bed_1_last_watered:
+    name: "Garden Bed 1 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water
+
+  garden_bed_2_last_watered:
+    name: "Garden Bed 2 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water
+
+  garden_bed_3_last_watered:
+    name: "Garden Bed 3 Last Watered"
+    has_date: true
+    has_time: true
+    icon: mdi:water-outline`;
+  navigator.clipboard.writeText(yaml).then(() => {
+    const btn = document.getElementById('yaml-copy-btn');
+    btn.textContent = '✓ Copied!'; btn.className = 'yaml-copy-btn done';
+    setTimeout(() => { btn.textContent = '📋 Copy YAML'; btn.className = 'yaml-copy-btn'; }, 3000);
+  }).catch(() => { alert('Copy failed — please select and copy the code block manually.'); });
+}
+
+function checkYamlPanelVisibility() {
+  const wh = CONFIG.watered_helpers;
+  const b1 = sm[wh.bed1]?.state;
+  const b2 = sm[wh.bed2]?.state;
+  const b3 = sm[wh.bed3]?.state;
+  const allExist = [b1, b2, b3].every(s => s && s !== 'unknown' && s !== 'unavailable');
+  const panel = document.getElementById('yaml-panel');
+  if (panel) panel.style.display = allExist ? 'none' : '';
+}
+
+/* ─── HARVEST COUNTDOWN ─── */
+const HARVEST = CONFIG.beds.map(b => ({
+  bed:     b.id,
+  planted: new Date(b.planted + 'T12:00:00'),
+  days:    b.days_to_harvest,
+  label:   b.label,
+}));
+
+function updateHarvest() {
+  const now = new Date();
+  HARVEST.forEach(h => {
+    const elapsed = Math.floor((now - h.planted) / 86400000);
+    const remaining = h.days - elapsed;
+    const pct = Math.min(100, Math.round((elapsed / h.days) * 100));
+    const dEl = document.getElementById('h'+h.bed+'-days');
+    const bEl = document.getElementById('h'+h.bed+'-bar');
+    if (!dEl) return;
+    if (remaining <= 0) {
+      dEl.textContent = '🎉 Ready!'; dEl.className = 'hdays ready';
+      bEl.style.width = '100%'; bEl.style.background = 'var(--green)';
+    } else if (remaining <= 10) {
+      dEl.textContent = remaining + ' days'; dEl.className = 'hdays soon';
+      bEl.style.width = pct + '%'; bEl.style.background = 'var(--sun)';
+    } else {
+      dEl.textContent = remaining + ' days'; dEl.className = 'hdays wait';
+      bEl.style.width = pct + '%'; bEl.style.background = 'var(--green)';
+    }
+    document.getElementById('h'+h.bed+'-sub').textContent =
+      `Planted ${h.planted.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · ${elapsed}d grown · ${pct}% complete`;
+  });
+}
+updateHarvest(); setInterval(updateHarvest, 3600000);
+
+/* ─── HISTORY CHARTS ─── */
+const charts = {};
+const CHART_COLORS = {
+  1: { moist: '#58a6ff', temp: '#f78166' },
+  2: { moist: '#58a6ff', temp: '#ffa657' },
+  3: { moist: '#58a6ff', temp: '#ff7b7b' },
+};
+const HIST_ENTITIES = {
+  1: { moist: CONFIG.sensors.bed1.moisture, temp: CONFIG.sensors.bed1.temp },
+  2: { moist: CONFIG.sensors.bed2.moisture, temp: CONFIG.sensors.bed2.temp },
+  3: { moist: CONFIG.sensors.bed3.moisture, temp: CONFIG.sensors.bed3.temp },
+};
+
+async function fetchHistory(entityId, hours=120) {
+  const end   = new Date();
+  const start = new Date(end - hours * 3600000);
+  const url = HA_URL + `/api/history/period/${start.toISOString()}` +
+    `?filter_entity_id=${entityId}&end_time=${end.toISOString()}&minimal_response=true&significant_changes_only=false`;
+  const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (!r.ok) throw new Error('History API ' + r.status);
+  const data = await r.json();
+  if (!data || !data[0]) return [];
+  return data[0]
+    .filter(p => p.state !== 'unknown' && p.state !== 'unavailable')
+    .map(p => ({ t: new Date(p.last_changed), v: parseFloat(p.state) }))
+    .filter(p => !isNaN(p.v));
+}
+
+function downsample(points, maxPts=60) {
+  if (points.length <= maxPts) return points;
+  const step = Math.ceil(points.length / maxPts);
+  return points.filter((_, i) => i % step === 0);
+}
+
+function buildChart(canvasId, bed, moistPts, tempPts) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (charts[bed]) { charts[bed].destroy(); delete charts[bed]; }
+  const labels = moistPts.map(p => p.t.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}));
+  const col = CHART_COLORS[bed];
+  charts[bed] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Moisture %',
+          data: moistPts.map(p => p.v),
+          borderColor: col.moist, backgroundColor: col.moist + '18',
+          fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'yM',
+        },
+        {
+          label: 'Temp °F',
+          data: (() => {
+            return moistPts.map(mp => {
+              const nearest = tempPts.reduce((a,b) => Math.abs(b.t-mp.t) < Math.abs(a.t-mp.t) ? b : a, tempPts[0]);
+              return nearest ? nearest.v : null;
+            });
+          })(),
+          borderColor: col.temp, backgroundColor: 'transparent',
+          fill: false, tension: 0.3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'yT',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#161b22', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          titleColor: '#6b7a8d', bodyColor: '#e8edf3',
+          titleFont: { family: 'DM Mono', size: 9 }, bodyFont: { family: 'DM Mono', size: 10 },
+          callbacks: {
+            title: items => {
+              const d = moistPts[items[0].dataIndex]?.t;
+              if (!d) return '';
+              return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' ' +
+                     d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+            }
+          }
+        }
+      },
+      scales: {
+        x: { display: false },
+        yM: { position: 'left', grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: col.moist, font: { family: 'DM Mono', size: 8 }, maxTicksLimit: 4 } },
+        yT: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: col.temp, font: { family: 'DM Mono', size: 8 }, maxTicksLimit: 4 } }
+      }
+    }
+  });
+}
+
+async function loadHistory() {
+  const btn = document.getElementById('btn-history');
+  btn.disabled = true; btn.textContent = '⏳ Loading…';
+  try {
+    for (const bed of [1,2,3]) {
+      const ents = HIST_ENTITIES[bed];
+      const [moistRaw, tempRaw] = await Promise.all([fetchHistory(ents.moist), fetchHistory(ents.temp)]);
+      const moistPts = downsample(moistRaw);
+      const tempPts  = downsample(tempRaw);
+      if (moistPts.length === 0) { document.getElementById('h-age-'+bed).textContent = 'no data'; continue; }
+      buildChart('chart'+bed, bed, moistPts, tempPts);
+      const span = moistPts.length > 0
+        ? Math.round((moistPts[moistPts.length-1].t - moistPts[0].t) / 3600000) + 'h of data'
+        : 'no data';
+      document.getElementById('h-age-'+bed).textContent = span;
+    }
+    btn.textContent = '↺ Reload';
+  } catch(e) {
+    btn.textContent = '⚠ Error';
+    console.error('History load failed:', e);
+    setTimeout(() => { btn.textContent = 'Load History'; }, 4000);
+  }
+  btn.disabled = false;
+}
+
+/* ─── AI GENERAL SUMMARY ─── */
+let summaryRan = false;
+
+async function runAISummary(manual=false) {
+  if (!AI_MODE) return;
+  if (!CLAUDE_KEY) { showKeyModal(); return; }
+  const body = document.getElementById('ai-summary-body');
+  const meta = document.getElementById('ai-sum-meta');
+  const btn  = document.getElementById('btn-ai-summary');
+  if (btn) { btn.disabled = true; btn.textContent = '✨…'; }
+  body.className = 'loading';
+  body.textContent = 'Analyzing all beds…';
+  try {
+    const ctx = getContext();
+    const n = (v, u='') => v !== null ? Number(v).toFixed(1)+u : 'unknown';
+    const wx = ctx.wx;
+    const forecast = liveWeather?.forecast?.map(f => `${f.day}: ${f.icon} ${f.hi}°/${f.lo}°`).join(', ') || 'unavailable';
+    const b1 = ctx.beds[1], b2 = ctx.beds[2], b3 = ctx.beds[3];
+    const now = new Date();
+    const hDays = HARVEST.map(h => {
+      const rem = h.days - Math.floor((now - h.planted) / 86400000);
+      return `Bed ${h.bed}: ${rem <= 0 ? 'READY TO HARVEST' : rem + ' days to '+h.label}`;
+    }).join(', ');
+    const bedAges = HARVEST.map(h => {
+      const days = Math.floor((now - h.planted) / 86400000);
+      return `Bed ${h.bed}: ${days} days old (planted ${h.planted.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+    }).join(', ');
+    const prompt = `You are PAM — Plant Automation Manager. An expert, no-nonsense garden AI for desert climates. Direct. Data-driven. No filler words.
+
+Today: ${ctx.now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}, ${ctx.timeOfDay}. Location: ${CONFIG.location}.
+
+WEATHER: ${n(wx.temp,'°F')}, UV ${n(wx.uv)}, Humidity ${n(wx.humid,'%')}, Wind ${n(wx.wind,' mph')}
+FORECAST: ${forecast}
+
+BED AGES: ${bedAges}
+NOTE: Bed 3 strawberries planted ${HARVEST[2].planted.toLocaleDateString('en-US',{month:'short',day:'numeric'})} — brand new transplant. High moisture is correct.
+
+BED 1 — Beefsteak Tomatoes & White Onions (${Math.floor((now - HARVEST[0].planted)/86400000)}d):
+  Soil ${n(b1.t,'°F')} | Moisture ${n(b1.m,'%')} (${b1.trend}) | Light ${n(b1.l,'lx')} | EC ${n(b1.c,'µS')}
+
+BED 2 — Peppers, Jalapeños & Onions (${Math.floor((now - HARVEST[1].planted)/86400000)}d):
+  Soil ${n(b2.t,'°F')} | Moisture ${n(b2.m,'%')} (${b2.trend}) | Light ${n(b2.l,'lx')} | EC ${n(b2.c,'µS')}
+
+BED 3 — Allstar & Chandler Strawberries (new transplant):
+  Soil ${n(b3.t,'°F')} | Moisture ${n(b3.m,'%')} (${b3.trend})
+
+HARVEST: ${hDays}
+
+Write a 2-3 sentence garden briefing. Lead with the most critical status. End with one specific action for today. Numbers and specifics only. No greetings, no compliments, no filler. No markdown, no asterisks, no bullet points — plain text only.`;
+
+    const raw = await callClaude(prompt);
+    // Strip markdown bold/italic asterisks — summary renders as plain text
+    const text = raw.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').trim();
+    body.className = ''; body.textContent = text;
+    const t = new Date();
+    meta.textContent = `Generated ${t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} via Claude Haiku · PAM v2.2`;
+    summaryRan = true;
+    await saveCache('intel', text, text.slice(0, 190));
+    renderCacheBadge('intel-cache-row', 'intel', new Date().toISOString());
+    try { await runShadeSchedule(ctx); } catch(se) { console.warn('Shade schedule failed:', se); }
+  } catch(e) {
+    body.className = '';
+    body.textContent = '⚠ Could not generate summary: ' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↺ Refresh'; }
+}
+
+/* ─── TTS SPEAK ─── */
+async function speakAdvice() {
+  if (!AI_MODE) return;
+  const btn  = document.getElementById('btn-speak');
+  const body = document.getElementById('ai-summary-body');
+  const text = body?.textContent?.trim();
+
+  if (!text || text.startsWith('Waiting') || text.startsWith('Analyzing') || text.startsWith('📡') || text.startsWith('⚠')) {
+    alert('No advice to speak yet — run PAM first.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.className = 'speak-btn speaking';
+  btn.textContent = '🔊 Sending…';
+
+  try {
+    const r = await fetch(HA_URL + '/api/services/tts/speak', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN
+      },
+      body: JSON.stringify({
+        entity_id: 'tts.home_assistant_cloud',
+        media_player_entity_id: CONFIG.tts_player,
+        message: text
+      })
+    });
+
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(`HTTP ${r.status}: ${err}`);
+    }
+
+    btn.className = 'speak-btn sent';
+    btn.textContent = '✓ Speaking!';
+    setTimeout(() => {
+      btn.className = 'speak-btn';
+      btn.textContent = '🔊 Speak';
+      btn.disabled = false;
+    }, 4000);
+
+  } catch(e) {
+    console.error('TTS error:', e);
+    btn.className = 'speak-btn';
+    btn.textContent = '⚠ Failed';
+    btn.style.color = 'var(--danger)';
+    btn.style.borderColor = 'rgba(248,81,73,0.3)';
+    setTimeout(() => {
+      btn.textContent = '🔊 Speak';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
+checkKeys();
+applyAIMode();
+connect();
+setInterval(render, 60000);
+</script>
+</body>
+</html>
