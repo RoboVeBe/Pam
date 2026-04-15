@@ -48,7 +48,7 @@ PAM is a single-file HTML dashboard that connects to Home Assistant via WebSocke
 | Home Assistant Green | HA host |
 | Xiaomi/HHCC Plant Sensors (Bluetooth) | Beds 1 & 2 — temp, moisture, light, conductivity |
 | Third Reality Zigbee Soil Sensor | Bed 3 — temp + moisture |
-| Ainven Weather Station | Local ambient temp, humidity, UV, wind, rain |
+| Ambient Weather Network station | Local ambient temp, humidity, UV, wind, rain |
 | Sonoff Zigbee Irrigation Controller | Valve, flow rate, leak detection |
 | Google Hub Max | Dashboard display via Cast |
 | ESP32 Bluetooth Proxy | Relays BT plant sensors to HA |
